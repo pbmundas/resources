@@ -1,0 +1,1523 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top 10 Cyberattacks MITRE ATT&CK Navigator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.18.9/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const attacksData = {
+            "Equifax (2017)": {
+                "name": "Equifax Data Breach (2017) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1190",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Exploited Apache Struts CVE-2017-5638",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "CVE-2017-5638 (Apache Struts 2.3.x/2.5.x, CVSS 10.0)" },
+                            { "name": "Assets", "value": "Public-facing web server" },
+                            { "name": "IOCs", "value": "Malicious HTTP POST requests to /struts2-showcase/" },
+                            { "name": "Threat Actors", "value": "Alleged PLA members (Chinese state-sponsored)" },
+                            { "name": "Parameters", "value": "Web server logs, IDS/IPS alerts, patch management records" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.003",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed commands via web shells",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Compromised web server" },
+                            { "name": "IOCs", "value": "Suspicious .jsp files (e.g., webshell.jsp, cmd.jsp), cmd.exe execution" },
+                            { "name": "Parameters", "value": "Process execution logs, web server error logs, command-line audits" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1505.003",
+                        "tactic": "persistence",
+                        "color": "#ffcc99",
+                        "comment": "Deployed web shells for persistent access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server file system" },
+                            { "name": "IOCs", "value": "Files like shell.jsp, webshell.jsp in /webapps/" },
+                            { "name": "Parameters", "value": "File creation/modification logs, integrity checks, web server configuration audits" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for higher access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server, back-end systems" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins, privilege elevation logs" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails, account permission changes" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1068",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Exploited vulnerabilities for privilege escalation",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server, back-end systems" },
+                            { "name": "IOCs", "value": "Exploit attempt logs, privilege elevation artifacts" },
+                            { "name": "Parameters", "value": "System call analysis, exploit detection logs, EDR alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials from memory or files",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server, back-end systems" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1552.001",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Extracted credentials from configuration files",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server configuration files" },
+                            { "name": "IOCs", "value": "Access to files with plaintext credentials (e.g., admin:admin)" },
+                            { "name": "Parameters", "value": "File access logs, configuration file audits, credential exposure checks" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information for reconnaissance",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server, back-end systems" },
+                            { "name": "IOCs", "value": "Systeminfo command output, reconnaissance tool usage" },
+                            { "name": "Parameters", "value": "System logs, command execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1083",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Enumerated SQL databases",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "SQL databases" },
+                            { "name": "IOCs", "value": "Over 9,000 SQL queries executed, network scan artifacts" },
+                            { "name": "Parameters", "value": "SQL query logs, network traffic analysis, database enumeration logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1018",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Discovered remote systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "SQL databases, network infrastructure" },
+                            { "name": "IOCs", "value": "Network scans targeting internal systems" },
+                            { "name": "Parameters", "value": "Network traffic analysis, system enumeration logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1071.001",
+                        "tactic": "command-and-control",
+                        "color": "#ffcc99",
+                        "comment": "Used web shells for C2 communication",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server, external C2 servers" },
+                            { "name": "IOCs", "value": "HTTP traffic to IPs (e.g., 59.188.x.x, 122.10.x.x), unusual POST requests" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), IDS/IPS alerts, C2 traffic patterns" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1105",
+                        "tactic": "command-and-control",
+                        "color": "#ffcc99",
+                        "comment": "Transferred tools via C2",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server" },
+                            { "name": "IOCs", "value": "Suspicious file downloads via HTTP" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), proxy logs, file transfer logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1074.001",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Staged PII data in compressed files",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "SQL databases" },
+                            { "name": "IOCs", "value": "Creation of .zip files, large file transfers" },
+                            { "name": "Parameters", "value": "File system logs, database access logs, temporary folder monitoring" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1119",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Automated collection of PII from databases",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "SQL databases" },
+                            { "name": "IOCs", "value": "Automated SQL query scripts, bulk data extraction" },
+                            { "name": "Parameters", "value": "Database query logs, file system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1041",
+                        "tactic": "exfiltration",
+                        "color": "#ffcc99",
+                        "comment": "Exfiltrated data over C2 channel",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "SQL databases, external servers" },
+                            { "name": "IOCs", "value": "Large HTTP transfers, deleted .zip files" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), DLP alerts, file deletion logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1070.004",
+                        "tactic": "defense-evasion",
+                        "color": "#ffcc99",
+                        "comment": "Deleted files and logs to cover tracks",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Web server, SQL databases" },
+                            { "name": "IOCs", "value": "Deleted .zip files, log deletion events" },
+                            { "name": "Parameters", "value": "File deletion logs, log integrity checks, event log encryption status" }
+                        ]
+                    }
+                ]
+            },
+            "WannaCry (2017)": {
+                "name": "WannaCry Ransomware (2017) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1190",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Exploited EternalBlue SMB vulnerability",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "CVE-2017-0144 (MS17-010, CVSS 8.1)" },
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "SMBv1 exploit attempts, WannaCry ransomware payload" },
+                            { "name": "Threat Actors", "value": "Lazarus Group (North Korean state-sponsored)" },
+                            { "name": "Parameters", "value": "Network traffic (SMB), patch management records, IDS alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.003",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed ransomware via malicious payload",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows endpoints" },
+                            { "name": "IOCs", "value": "WannaCry ransomware executable, cmd.exe execution" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1486",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Encrypted data with ransomware",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows file systems" },
+                            { "name": "IOCs", "value": ".WNCRY file extensions, ransom notes" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for propagation",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials to move laterally",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information for propagation",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1018",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Discovered remote systems via SMB",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Network infrastructure" },
+                            { "name": "IOCs", "value": "SMB scanning traffic" },
+                            { "name": "Parameters", "value": "Network traffic analysis, system enumeration logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1570",
+                        "tactic": "lateral-movement",
+                        "color": "#ffcc99",
+                        "comment": "Propagated via SMB protocol",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems, network shares" },
+                            { "name": "IOCs", "value": "SMBv1 traffic spikes, worm-like propagation" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), EDR alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1071.002",
+                        "tactic": "command-and-control",
+                        "color": "#ffcc99",
+                        "comment": "Used SMB for C2 communication",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Unusual SMB traffic to external IPs" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), IDS/IPS alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1490",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Inhibited system recovery",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Disabled shadow copies, ransom notes" },
+                            { "name": "Parameters", "value": "System recovery logs, file system audits" }
+                        ]
+                    }
+                ]
+            },
+            "NotPetya (2017)": {
+                "name": "NotPetya Ransomware (2017) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1195.002",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Compromised software update (M.E.Doc)",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "Supply chain compromise" },
+                            { "name": "Assets", "value": "M.E.Doc software clients" },
+                            { "name": "IOCs", "value": "Malicious M.E.Doc updates" },
+                            { "name": "Threat Actors", "value": "Sandworm Team (Russian state-sponsored)" },
+                            { "name": "Parameters", "value": "Software update logs, network traffic analysis" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.003",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed ransomware via malicious payload",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "NotPetya executable, cmd.exe execution" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1486",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Encrypted data with ransomware-like payload",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows file systems" },
+                            { "name": "IOCs", "value": ".petya file extensions, ransom notes" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for propagation",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials using Mimikatz",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Mimikatz execution, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information for propagation",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1018",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Discovered remote systems via SMB",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Network infrastructure" },
+                            { "name": "IOCs", "value": "SMB scanning traffic" },
+                            { "name": "Parameters", "value": "Network traffic analysis, system enumeration logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1570",
+                        "tactic": "lateral-movement",
+                        "color": "#ffcc99",
+                        "comment": "Propagated via SMB and WMI",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems, network shares" },
+                            { "name": "IOCs", "value": "SMB/WMI traffic spikes, worm-like propagation" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), EDR alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1071.002",
+                        "tactic": "command-and-control",
+                        "color": "#ffcc99",
+                        "comment": "Used SMB for C2 communication",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Unusual SMB traffic to external IPs" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), IDS/IPS alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1489",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Disrupted services with destructive payload",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "MBR overwrites, system crashes" },
+                            { "name": "Parameters", "value": "System logs, boot failure reports" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1070.004",
+                        "tactic": "defense-evasion",
+                        "color": "#ffcc99",
+                        "comment": "Deleted files to cover tracks",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Deleted system files, log deletion events" },
+                            { "name": "Parameters", "value": "File deletion logs, log integrity checks" }
+                        ]
+                    }
+                ]
+            },
+            "SolarWinds (2020)": {
+                "name": "SolarWinds Supply Chain Attack (2020) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1195.002",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Compromised software update (Orion)",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "Supply chain compromise" },
+                            { "name": "Assets", "value": "SolarWinds Orion platform" },
+                            { "name": "IOCs", "value": "Malicious Orion updates, Sunburst backdoor" },
+                            { "name": "Threat Actors", "value": "Nobelium (Russian state-sponsored)" },
+                            { "name": "Parameters", "value": "Software update logs, network traffic analysis" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.001",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed malicious code via Sunburst backdoor",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers" },
+                            { "name": "IOCs", "value": "Sunburst DLL execution" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1505.003",
+                        "tactic": "persistence",
+                        "color": "#ffcc99",
+                        "comment": "Deployed persistent backdoors",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers" },
+                            { "name": "IOCs", "value": "Malicious DLLs, scheduled tasks" },
+                            { "name": "Parameters", "value": "File system logs, registry monitoring" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers, cloud environments" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials for lateral movement",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1018",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Discovered remote systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Network infrastructure" },
+                            { "name": "IOCs", "value": "Network scans targeting internal systems" },
+                            { "name": "Parameters", "value": "Network traffic analysis, system enumeration logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1570",
+                        "tactic": "lateral-movement",
+                        "color": "#ffcc99",
+                        "comment": "Moved laterally via compromised credentials",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers, cloud environments" },
+                            { "name": "IOCs", "value": "Unusual network share access" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), EDR alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1071.001",
+                        "tactic": "command-and-control",
+                        "color": "#ffcc99",
+                        "comment": "Used HTTPS for C2 communication",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers, external C2 servers" },
+                            { "name": "IOCs", "value": "HTTPS traffic to avsvmcloud.com domains" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), IDS/IPS alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1105",
+                        "tactic": "command-and-control",
+                        "color": "#ffcc99",
+                        "comment": "Transferred additional tools via C2",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers" },
+                            { "name": "IOCs", "value": "Suspicious file downloads via HTTPS" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), proxy logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1074.001",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Staged sensitive data for exfiltration",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers, cloud environments" },
+                            { "name": "IOCs", "value": "Staged data in temporary folders" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1041",
+                        "tactic": "exfiltration",
+                        "color": "#ffcc99",
+                        "comment": "Exfiltrated data over C2 channel",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows servers, external servers" },
+                            { "name": "IOCs", "value": "Large HTTPS transfers" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), DLP alerts" }
+                        ]
+                    }
+                ]
+            },
+            "Target (2013)": {
+                "name": "Target Data Breach (2013) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1195.001",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Compromised third-party HVAC vendor",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "Weak third-party credentials" },
+                            { "name": "Assets", "value": "Vendor systems, POS terminals" },
+                            { "name": "IOCs", "value": "Phishing emails to vendor, stolen credentials" },
+                            { "name": "Threat Actors", "value": "Unknown (Eastern European cybercriminals)" },
+                            { "name": "Parameters", "value": "Email logs, authentication logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.001",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed POS malware",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "POS terminals" },
+                            { "name": "IOCs", "value": "Memory-scraping malware" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1505.003",
+                        "tactic": "persistence",
+                        "color": "#ffcc99",
+                        "comment": "Installed persistent POS malware",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "POS terminals" },
+                            { "name": "IOCs", "value": "Malicious executables in POS systems" },
+                            { "name": "Parameters", "value": "File system logs, registry monitoring" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "POS terminals, network" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials from vendor systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Vendor systems" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "POS terminals, network" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1018",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Discovered POS systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Network infrastructure" },
+                            { "name": "IOCs", "value": "Network scans targeting POS systems" },
+                            { "name": "Parameters", "value": "Network traffic analysis, system enumeration logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1570",
+                        "tactic": "lateral-movement",
+                        "color": "#ffcc99",
+                        "comment": "Moved laterally to POS systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "POS terminals, network" },
+                            { "name": "IOCs", "value": "Unusual network share access" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), EDR alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1074.001",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Staged credit card data",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "POS terminals" },
+                            { "name": "IOCs", "value": "Memory-scraped credit card data" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1041",
+                        "tactic": "exfiltration",
+                        "color": "#ffcc99",
+                        "comment": "Exfiltrated credit card data",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "POS terminals, external servers" },
+                            { "name": "IOCs", "value": "Large data transfers to external IPs" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), DLP alerts" }
+                        ]
+                    }
+                ]
+            },
+            "Yahoo (2013-2014)": {
+                "name": "Yahoo Data Breach (2013-2014) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1566.002",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Used spear-phishing for initial access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "Social engineering" },
+                            { "name": "Assets", "value": "Employee endpoints" },
+                            { "name": "IOCs", "value": "Phishing emails with malicious links" },
+                            { "name": "Threat Actors", "value": "Russian state-sponsored hackers" },
+                            { "name": "Parameters", "value": "Email logs, phishing detection systems" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.001",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed malware via phishing links",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Employee endpoints" },
+                            { "name": "IOCs", "value": "Malicious executable downloads" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1505.003",
+                        "tactic": "persistence",
+                        "color": "#ffcc99",
+                        "comment": "Deployed persistent malware",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Yahoo servers" },
+                            { "name": "IOCs", "value": "Malicious executables, scheduled tasks" },
+                            { "name": "Parameters", "value": "File system logs, registry monitoring" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Yahoo servers" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials from systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Yahoo servers" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Yahoo servers" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1083",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Enumerated user databases",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Yahoo databases" },
+                            { "name": "IOCs", "value": "SQL query execution, database access logs" },
+                            { "name": "Parameters", "value": "Database query logs, network traffic analysis" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1074.001",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Staged user data for exfiltration",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Yahoo databases" },
+                            { "name": "IOCs", "value": "Staged data in temporary folders" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1041",
+                        "tactic": "exfiltration",
+                        "color": "#ffcc99",
+                        "comment": "Exfiltrated user data",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Yahoo databases, external servers" },
+                            { "name": "IOCs", "value": "Large data transfers to external IPs" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), DLP alerts" }
+                        ]
+                    }
+                ]
+            },
+            "Change Healthcare (2024)": {
+                "name": "Change Healthcare Ransomware (2024) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1195.001",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Compromised third-party credentials",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "Weak third-party authentication" },
+                            { "name": "Assets", "value": "Third-party systems" },
+                            { "name": "IOCs", "value": "Stolen employee credentials" },
+                            { "name": "Threat Actors", "value": "Scattered Spider group" },
+                            { "name": "Parameters", "value": "Authentication logs, phishing detection systems" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.001",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed ransomware payload",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Ransomware executable" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1486",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Encrypted data with ransomware",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Encrypted files, ransom notes" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials from systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1074.001",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Staged sensitive data for exfiltration",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare databases" },
+                            { "name": "IOCs", "value": "Staged data in temporary folders" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1041",
+                        "tactic": "exfiltration",
+                        "color": "#ffcc99",
+                        "comment": "Exfiltrated data for extortion",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare databases, external servers" },
+                            { "name": "IOCs", "value": "Large data transfers to external IPs" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1489",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Disrupted healthcare services",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "System outages, ransom notes" },
+                            { "name": "Parameters", "value": "System logs, service disruption reports" }
+                        ]
+                    }
+                ]
+            },
+            "Synnovis-NHS (2024)": {
+                "name": "Synnovis-NHS Ransomware (2024) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1195.001",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Compromised third-party systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "Supply chain compromise" },
+                            { "name": "Assets", "value": "Synnovis systems" },
+                            { "name": "IOCs", "value": "Stolen credentials, phishing emails" },
+                            { "name": "Threat Actors", "value": "Qilin Ransomware Gang" },
+                            { "name": "Parameters", "value": "Authentication logs, phishing detection systems" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.001",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed ransomware payload",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Ransomware executable" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1486",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Encrypted data with ransomware",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Encrypted files, ransom notes" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials from systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1074.001",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Staged sensitive data for exfiltration",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare databases" },
+                            { "name": "IOCs", "value": "Staged data in temporary folders" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1041",
+                        "tactic": "exfiltration",
+                        "color": "#ffcc99",
+                        "comment": "Exfiltrated data for extortion",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare databases, external servers" },
+                            { "name": "IOCs", "value": "Large data transfers to external IPs" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1489",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Disrupted healthcare services",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Healthcare systems" },
+                            { "name": "IOCs", "value": "System outages, ransom notes" },
+                            { "name": "Parameters", "value": "System logs, service disruption reports" }
+                        ]
+                    }
+                ]
+            },
+            "Stuxnet (2010)": {
+                "name": "Stuxnet (2010) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1190",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Exploited zero-day vulnerabilities",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "CVE-2010-2568, CVE-2010-2772" },
+                            { "name": "Assets", "value": "Windows systems, USB drives" },
+                            { "name": "IOCs", "value": "Malicious LNK files, USB propagation" },
+                            { "name": "Threat Actors", "value": "Alleged U.S.-Israel collaboration" },
+                            { "name": "Parameters", "value": "USB access logs, patch management records" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.001",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed malicious code via LNK exploits",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Malicious LNK files, driver execution" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1547.001",
+                        "tactic": "persistence",
+                        "color": "#ffcc99",
+                        "comment": "Used registry for persistence",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Registry modifications" },
+                            { "name": "Parameters", "value": "Registry monitoring, file system logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1068",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Exploited vulnerabilities for privilege escalation",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Exploit attempt logs" },
+                            { "name": "Parameters", "value": "System call analysis, EDR alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information for targeting",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems, PLCs" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1018",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Discovered PLC systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Industrial control systems" },
+                            { "name": "IOCs", "value": "Network scans targeting PLCs" },
+                            { "name": "Parameters", "value": "Network traffic analysis, system enumeration logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1570",
+                        "tactic": "lateral-movement",
+                        "color": "#ffcc99",
+                        "comment": "Propagated via USB and network shares",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems, network shares" },
+                            { "name": "IOCs", "value": "USB propagation, network share access" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), EDR alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1071.001",
+                        "tactic": "command-and-control",
+                        "color": "#ffcc99",
+                        "comment": "Used HTTPS for C2 communication",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems, external C2 servers" },
+                            { "name": "IOCs", "value": "HTTPS traffic to suspicious domains" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), IDS/IPS alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1496",
+                        "tactic": "impact",
+                        "color": "#ff6666",
+                        "comment": "Manipulated PLCs for physical damage",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Industrial control systems" },
+                            { "name": "IOCs", "value": "Modified PLC configurations" },
+                            { "name": "Parameters", "value": "PLC logs, system integrity checks" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1070.004",
+                        "tactic": "defense-evasion",
+                        "color": "#ffcc99",
+                        "comment": "Deleted files to cover tracks",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Windows systems" },
+                            { "name": "IOCs", "value": "Deleted malicious files" },
+                            { "name": "Parameters", "value": "File deletion logs, log integrity checks" }
+                        ]
+                    }
+                ]
+            },
+            "DNC Hack (2016)": {
+                "name": "DNC Hack (2016) MITRE ATT&CK Mapping",
+                "versions": { "attack": "14", "navigator": "4.9.1", "layer": "4.5" },
+                "domain": "enterprise-attack",
+                "techniques": [
+                    {
+                        "techniqueID": "T1566.002",
+                        "tactic": "initial-access",
+                        "color": "#ff9999",
+                        "comment": "Used spear-phishing for initial access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Vulnerability", "value": "Social engineering" },
+                            { "name": "Assets", "value": "Employee endpoints" },
+                            { "name": "IOCs", "value": "Phishing emails with malicious links" },
+                            { "name": "Threat Actors", "value": "Cozy Bear, Fancy Bear (Russian state-sponsored)" },
+                            { "name": "Parameters", "value": "Email logs, phishing detection systems" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1059.001",
+                        "tactic": "execution",
+                        "color": "#ffcc99",
+                        "comment": "Executed malware via phishing links",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "Employee endpoints" },
+                            { "name": "IOCs", "value": "Malicious executable downloads" },
+                            { "name": "Parameters", "value": "Process execution logs, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1505.003",
+                        "tactic": "persistence",
+                        "color": "#ffcc99",
+                        "comment": "Deployed persistent malware",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "DNC servers" },
+                            { "name": "IOCs", "value": "Malicious executables, scheduled tasks" },
+                            { "name": "Parameters", "value": "File system logs, registry monitoring" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1078",
+                        "tactic": "privilege-escalation",
+                        "color": "#ffcc99",
+                        "comment": "Used stolen credentials for access",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "DNC servers" },
+                            { "name": "IOCs", "value": "Unauthorized admin logins" },
+                            { "name": "Parameters", "value": "Authentication logs, privilege escalation audit trails" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1003",
+                        "tactic": "credential-access",
+                        "color": "#ffcc99",
+                        "comment": "Dumped credentials from systems",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "DNC servers" },
+                            { "name": "IOCs", "value": "Mimikatz usage, LSASS memory dumps" },
+                            { "name": "Parameters", "value": "Memory analysis, EDR telemetry" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1082",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Collected system information",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "DNC servers" },
+                            { "name": "IOCs", "value": "Systeminfo command output" },
+                            { "name": "Parameters", "value": "System logs, command execution logs" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1083",
+                        "tactic": "discovery",
+                        "color": "#ffcc99",
+                        "comment": "Enumerated email databases",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "DNC email servers" },
+                            { "name": "IOCs", "value": "SQL query execution, database access logs" },
+                            { "name": "Parameters", "value": "Database query logs, network traffic analysis" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1074.001",
+                        "tactic": "collection",
+                        "color": "#ffcc99",
+                        "comment": "Staged email data for exfiltration",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "DNC email servers" },
+                            { "name": "IOCs", "value": "Staged data in temporary folders" },
+                            { "name": "Parameters", "value": "File system logs, DLP alerts" }
+                        ]
+                    },
+                    {
+                        "techniqueID": "T1041",
+                        "tactic": "exfiltration",
+                        "color": "#ffcc99",
+                        "comment": "Exfiltrated email data",
+                        "enabled": true,
+                        "metadata": [
+                            { "name": "Assets", "value": "DNC email servers, external servers" },
+                            { "name": "IOCs", "value": "Large data transfers to external IPs" },
+                            { "name": "Parameters", "value": "Network traffic (PCAP), DLP alerts" }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        const App = () => {
+            const [selectedAttack, setSelectedAttack] = React.useState(Object.keys(attacksData)[0]);
+            const [selectedTechnique, setSelectedTechnique] = React.useState(null);
+
+            React.useEffect(() => {
+                const mitreData = attacksData[selectedAttack];
+                const nodes = mitreData.techniques.map((tech, index) => ({
+                    id: index + 1,
+                    label: `${tech.techniqueID}: ${tech.tactic}`,
+                    shape: "box",
+                    color: tech.color
+                }));
+
+                const edges = [];
+                const tacticOrder = [
+                    "initial-access", "execution", "persistence", "privilege-escalation",
+                    "credential-access", "discovery", "lateral-movement", "command-and-control",
+                    "collection", "exfiltration", "defense-evasion", "impact"
+                ];
+
+                const tacticNodes = {};
+                mitreData.techniques.forEach((tech, index) => {
+                    const nodeId = index + 1;
+                    const tacticIndex = tacticOrder.indexOf(tech.tactic);
+                    if (!tacticNodes[tech.tactic]) {
+                        tacticNodes[tech.tactic] = [nodeId];
+                    } else {
+                        tacticNodes[tech.tactic].push(nodeId);
+                    }
+                    if (tacticIndex > 0) {
+                        const prevTactic = tacticOrder[tacticIndex - 1];
+                        if (tacticNodes[prevTactic]) {
+                            tacticNodes[prevTactic].forEach(prevNodeId => {
+                                edges.push({ from: prevNodeId, to: nodeId, arrows: "to" });
+                            });
+                        }
+                    }
+                });
+
+                const container = document.getElementById('flowchart');
+                const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+                const options = {
+                    nodes: { font: { size: 12 }, shapeProperties: { borderRadius: 5 } },
+                    edges: { arrows: 'to', font: { size: 10 } },
+                    physics: {
+                        enabled: true,
+                        solver: 'forceAtlas2Based',
+                        forceAtlas2Based: {
+                            gravitationalConstant: -50,
+                            centralGravity: 0.01,
+                            springLength: 100,
+                            springConstant: 0.08
+                        },
+                        stabilization: { iterations: 1000 }
+                    },
+                    interaction: { dragNodes: true, dragView: true, zoomView: true }
+                };
+                const network = new vis.Network(container, data, options);
+
+                network.on("click", (params) => {
+                    if (params.nodes.length > 0) {
+                        const nodeId = params.nodes[0];
+                        setSelectedTechnique(mitreData.techniques[nodeId - 1]);
+                    }
+                });
+
+                return () => network.destroy();
+            }, [selectedAttack]);
+
+            return (
+                <div className="container mx-auto p-4">
+                    <h2 className="text-2xl font-bold mb-4">Top 10 Cyberattacks MITRE ATT&CK Navigator</h2>
+                    <div className="mb-4">
+                        <label className="mr-2">Select Attack:</label>
+                        <select
+                            value={selectedAttack}
+                            onChange={(e) => setSelectedAttack(e.target.value)}
+                            className="border rounded p-2"
+                        >
+                            {Object.keys(attacksData).map((attack) => (
+                                <option key={attack} value={attack}>{attack}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex gap-4 h-[600px]">
+                        <div id="flowchart" className="flex-3 border border-gray-300 bg-white"></div>
+                        <div id="details" className="flex-1 p-4 bg-gray-200 rounded-md overflow-y-auto">
+                            <h3 className="text-lg font-semibold">Technique Details</h3>
+                            {selectedTechnique ? (
+                                <pre className="whitespace-pre-wrap text-sm">
+                                    <strong>Technique ID:</strong> {selectedTechnique.techniqueID}<br/>
+                                    <strong>Tactic:</strong> {selectedTechnique.tactic}<br/>
+                                    <strong>Comment:</strong> {selectedTechnique.comment}<br/>
+                                    <strong>Metadata:</strong><br/>
+                                    {selectedTechnique.metadata.map((meta, idx) => (
+                                        <div key={idx}>
+                                            <strong>{meta.name}:</strong> {meta.value}<br/>
+                                        </div>
+                                    ))}
+                                </pre>
+                            ) : (
+                                <p>Click a node to view technique details, MITRE TTPs, IOCs, and technical information. Drag nodes to move them.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
